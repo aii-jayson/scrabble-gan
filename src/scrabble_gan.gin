@@ -15,13 +15,13 @@ shared_specs.epochs = 15
 shared_specs.batch_size = 64
 shared_specs.latent_dim = 128
 shared_specs.embed_y = (32, 8192)
-shared_specs.num_gen = 1,000,000
+shared_specs.num_gen = 200
 shared_specs.kernel_reg = @spectral_norm
 shared_specs.g_bw_attention = 'B3'              #'B_skip'
 shared_specs.d_bw_attention = 'B1'              #'B_skip'
 
 # I/O and data structure
-io.base_path = '/root/scrabble-gan' # '/Users/jsoncunanan/Documents/GitHub/scrabble-gan'
+io.base_path = '/root/scrabble-gan' #'/Users/jsoncunanan/Documents/GitHub/scrabble-gan'
 io.checkpoint_dir = '/res/out/big_ac_gan/training_checkpoints'
 io.gen_imgs_dir = '/res/out/big_ac_gan/images/'
 io.model_dir = '/res/out/big_ac_gan/model/'
@@ -32,7 +32,7 @@ io.input_dim = (32, 160, 1)
 io.buf_size = 80377
 io.n_classes = 52
 io.seq_len = None
-io.bucket_size = 10
+io.bucket_size = 20
 io.raw_dir = '/res/data/iamDB/words/'
 io.read_dir = '/res/data/iamDB/words-Reading/'
 io.char_vec = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'

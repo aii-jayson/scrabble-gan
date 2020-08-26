@@ -52,7 +52,7 @@ def setup_io(base_path, checkpoint_dir, gen_imgs_dir, gen_data_dir, model_dir, r
 
 def main():
     # init params
-    gin.parse_config_file('/Users/jsoncunanan/Documents/GitHub/scrabble-gan/src/scrabble_gan.gin')
+    gin.parse_config_file('/root/scrabble-gan/src/scrabble_gan.gin') #'/Users/jsoncunanan/Documents/GitHub/scrabble-gan/src/scrabble_gan.gin'
     epochs, batch_size, latent_dim, embed_y, num_gen, kernel_reg, g_bw_attention, d_bw_attention = get_shared_specs()
     in_dim, buf_size, n_classes, seq_len, bucket_size, ckpt_path, gen_path, gen_data_path, m_path, raw_dir, read_dir, char_vec = setup_io()
 
@@ -95,26 +95,34 @@ def main():
     if not os.path.exists(gen_data_path):
         os.makedirs(gen_data_path)
 
-    def make_dataset(size, preds, labels):
+    def make_dataset(num_gen, num_batch=2):
         lines = []
-        for i in trange(size):
-            plt.imshow(preds[i, :, :, 0], cmap='gray')
-            plt.axis('off')
+        for _ in trange(num_batch):
 
-            filename = str("".join([char_vec[label] for label in labels[i]]))
-            plt.savefig(gen_data_path + filename + ".png")
-            lines.append('test/' + filename + '.png\t' + filename + '\n')
+            seed = tf.random.normal([num_gen, latent_dim])
+            random_bucket_idx = random.randint(4, bucket_size - 1)
+            labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(num_gen)], np.int32)
+            test_input = [seed, labels]
+
+            preds = generator(test_input, training=False)
+            preds = (preds + 1) / 2.0
+
+            for i in trange(preds.shape[0]):
+                filename = str("".join([char_vec[label] for label in labels[i]]))
+                tf.keras.preprocessing.image.save_img(gen_data_path + filename + ".png", preds[i])
+                lines.append( 'test/' + filename + '.png\t' + filename + '\n')
 
         anno = open(gen_data_path+"gt.txt", "w")
         anno.writelines(lines)
         anno.close()
 
-    make_dataset(predictions.shape[0], predictions, labels)
+    make_dataset(num_gen)
+    # print(predictions.numpy()[0].shape)
 
 if __name__ == "__main__":
     main()
 
-    # plt.imshow(predictions[0, :, :, 0], cmap='gray')
+    # plt.imshow(predictions[0, :, :, 0], cmap='gray') lines.append('test/' + filename + '.png\t' + filename + '\n')
     # plt.axis('off')
     #
     # plt.show()
