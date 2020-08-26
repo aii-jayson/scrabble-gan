@@ -84,7 +84,7 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         yield (image_batch, label_batch)
 
 
-def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix,
+def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix, manager,
           generator_optimizer, discriminator_optimizer, recognizer_optimizer, seed_labels, buffer_size, batch_size,
           epochs, model_path, latent_dim, gen_path, loss_fn, disc_iters, random_words, bucket_size, char_vector):
     """
@@ -115,10 +115,14 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     :return:
     """
 
-    batch_per_epoch = int(buffer_size / batch_size) + 1
+    batch_per_epoch =  1
+    checkpoint.restore(manager.latest_checkpoint)
+    if manager.latest_checkpoint:
+        print("Restored from {}".format(manager.latest_checkpoint))
+    else:
+        print("Initializing from scratch.")
 
-    print('training...')
-    for epoch_idx in range(epochs):
+    for epoch_idx in range(1):
         start = time.time()
 
         for batch_idx in range(batch_per_epoch):
@@ -140,8 +144,9 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     # save generator model
     if not os.path.exists(model_path):
         os.makedirs(model_path)
+    print('saving generator')
+    generator.save_weights(model_path + 'generator_{}.h5'.format(epochs))
 
-    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 
 # Notice the use of `tf.function`
@@ -325,7 +330,7 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
         random_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
-    with open(os.path.join(random_words_path, 'random_words.txt'), 'r') as fi_random_word_list:
+    with open(os.path.join(random_words_path, 'usa.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
