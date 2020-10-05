@@ -122,7 +122,7 @@ def main():
         anno.writelines(lines)
         anno.close()
 
-    make_dataset(num_gen)
+    # make_dataset(num_gen)
     # print(predictions.numpy()[0].shape)
 
 

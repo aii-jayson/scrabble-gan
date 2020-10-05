@@ -81,7 +81,71 @@ def load_prepare_data(input_dim, batch_size, reading_dir, char_vector, bucket_si
         image_batch = image_batch.reshape(-1, h, int((h / 2) * random_bucket_idx), c)
         image_batch = (image_batch - 127.5) / 127.5
 
-        yield (image_batch, label_batch)
+        yield image_batch, label_batch
+
+
+def load_lines_data(input_dim, batch_size, reading_dir, char_vector, bucket_size):
+    """
+    load data into tensor (python generator)
+
+    (1) read buckets into memory
+    (2) compute bucket_weights
+    (3) create python generator
+
+    :param input_dim:
+    :param batch_size:
+    :param reading_dir:
+    :param char_vector:
+    :param bucket_size:
+    :return:
+    """
+
+    h, w, c = input_dim
+
+    data = []
+    number_samples = 0
+
+    # (1) read buckets into memory
+    imgs = []
+    labels = []
+
+    file_list = os.listdir(reading_dir)
+    file_list = [fi for fi in file_list if fi.endswith(".txt")]
+
+    for file in file_list:
+        with open(reading_dir + file, 'r', encoding='utf8') as f:
+            # 'auto' -> [0, 20, 19, 14]
+            label = [char_vector.index(char) for char in f.readline()]
+            img = cv2.imread(os.path.join(reading_dir, os.path.splitext(file)[0] + '.png'), 0)
+            imgs.append(img)
+            labels.append(label)
+            number_samples += 1
+
+    data.append((imgs, labels))
+
+    # (3) create python generator
+    while True:
+
+        image_batch = []
+        label_batch = []
+
+        for i in range(batch_size):
+            # retrieve random samples from bucket of size batch_size
+            sample_idx = random.randint(0, len(data) - 1)
+            image_batch.append(data[sample_idx][0])
+            label_batch.append(data[sample_idx][1])
+            print(data[sample_idx])
+
+        # convert to numpy array
+        image_batch = np.array(image_batch).astype('float32')
+        print(image_batch.shape)
+        label_batch = np.array(label_batch).astype(np.int32)
+
+        # normalize images to [-1, 1]
+        image_batch = image_batch.reshape(-1, h, int((h / 2) * bucket_size), c)
+        image_batch = (image_batch - 127.5) / 127.5
+
+        yield image_batch, label_batch
 
 
 def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoint, checkpoint_prefix, manager,
@@ -115,7 +179,7 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     :return:
     """
 
-    batch_per_epoch =  1
+    batch_per_epoch = 1#int(buffer_size / batch_size) + 1
     checkpoint.restore(manager.latest_checkpoint)
     if manager.latest_checkpoint:
         print("Restored from {}".format(manager.latest_checkpoint))
@@ -145,9 +209,8 @@ def train(dataset, generator, discriminator, recognizer, composite_gan, checkpoi
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     print('saving generator')
-    generator.save_weights(model_path + 'generator_{}.h5'.format(epochs))
-
-
+    # generator.save_weights(model_path + 'generator_{}.h5'.format(epochs))
+    generator.save(model_path + 'generator_{}'.format(epochs), save_format='tf')
 
 # Notice the use of `tf.function`
 # This annotation causes the function to be "compiled".
@@ -180,7 +243,12 @@ def train_step(epoch_idx, batch_idx, batch_per_epoch, images, labels, discrimina
 
     # generate latent points + random sequence labels from word list
     noise = tf.random.normal([batch_size, latent_dim])
-    random_bucket_idx = random.randint(0, bucket_size - 1)
+    # random_bucket_idx = random.randint(0, bucket_size - 1)
+    idx = []
+    for i in range(bucket_size):
+        if random_words[i] != []:
+            idx.append(i)
+    random_bucket_idx = random.choice(idx)
     fake_labels = np.array([random.choice(random_words[random_bucket_idx]) for _ in range(batch_size)], np.int32)
 
     # obtain shapes
@@ -254,7 +322,7 @@ def apply_gradient_balancing(r_fake_logits, g_loss, alpha=1):
 
     r_loss_fake_std = tf.math.reduce_std(r_fake_logits)
     g_loss_std = tf.math.reduce_std(g_loss)
-    return g_loss + alpha * (((g_loss_std) / (r_loss_fake_std)) * r_fake_logits)
+    return g_loss + alpha * ((g_loss_std / r_loss_fake_std) * r_fake_logits)
 
 
 def generate_and_save_images(model, epoch, test_input, gen_path, char_vector):
@@ -326,15 +394,15 @@ def load_random_word_list(reading_dir, bucket_size, char_vector):
     """
 
     random_words = []
+
     for i in range(bucket_size):
         random_words.append([])
 
     random_words_path = os.path.dirname(os.path.dirname(os.path.dirname(reading_dir))) + '/'
-    with open(os.path.join(random_words_path, 'usa.txt'), 'r') as fi_random_word_list:
+    with open(os.path.join(random_words_path, 'vi.txt'), 'r') as fi_random_word_list:
         for word in fi_random_word_list:
             word = word.strip()
             bucket = len(word)
-
             if bucket <= bucket_size:
                 random_words[bucket - 1].append([char_vector.index(char) for char in word])
 

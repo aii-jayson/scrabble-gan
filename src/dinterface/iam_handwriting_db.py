@@ -40,7 +40,7 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
     with open(transcription_file, 'r', encoding="utf8") as fi:
         for line in fi:
             if not line.startswith('#'):
-                labels = line.split()
+                labels = line.split(maxsplit=2)
                 file_nm = labels[0] + '.png'
 
                 # mark not properly segmented words as '-1'
@@ -51,19 +51,17 @@ def convert_to_gan_reading_format_save(input_dir, output_dir, target_size, bucke
                     transcriptions[file_nm] = '-1'
 
     print('size of iamDB words: {}'.format(len(transcriptions)))
-
+    print(listOfFiles)
     # (3) process/ filter images along its respective transcriptions
     for idx, file in enumerate(listOfFiles):
 
         if file.endswith(".png"):
-
-            print(file)
+            # print(file)
             # get file name and its corresponding transcription
             img_nm = os.path.basename(file)
             transcription = transcriptions[img_nm]
 
-            # filter samples with chars other a-zA-Z
-            if transcription.isalpha() and len(transcription) > 0:
+            if len(transcription) > 0:
                 len_word = len(transcription)
 
                 # read image (grayscale mode) and resize to common data size
